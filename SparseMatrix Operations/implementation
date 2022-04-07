@@ -1,0 +1,309 @@
+#include "SparseVector.h"
+#include "SparseMatrix.h"
+
+
+//return 1 if no error. zero if file couldn't opened.
+int check_file_errors(ifstream* f){
+    int retval;
+    if(f->eof())
+        retval=1;
+    if(f->fail() || f->bad())
+        retval=0;   
+    return retval;     
+}
+//initialize elements of Sparse Vector with zeros 
+void SparseVector:: initialize(int vecSize){
+    dataArray.resize(vecSize);
+    for(int i=0; i<vecSize;i++)
+        dataArray[i]=0.0;
+}       
+ 
+
+//takes vector input as string and split from spaces to get index:data pairs separately 
+void SparseVector::parse_input(stringstream& inputLine){ 
+    int dataCount=0,index; //datacount: element count of vector. index: index of given data
+    double data; //Data info
+    char delimeter; //to read : delimeter to saperate index and data info
+    vector<int> index_info;
+    vector<double> data_info;  
+    //while exist input continue  
+    while (inputLine >> index) {
+        inputLine >> delimeter >> data;
+        index_info.push_back(index);
+        data_info.push_back(data);
+        dataCount++;
+    }
+    dataCount--;
+
+//resize the private vector variable according to last index info and initialize with zeros
+    int vecSize=index_info[dataCount]+1;
+    (*this).initialize(vecSize);
+
+//fill the non zero indexes with provided info        
+    for(int i=0;i<=dataCount;i++)
+        dataArray[index_info[i]]=data_info[i];
+
+    index_info.resize(0);
+    data_info.resize(0);
+
+} 
+int SparseVector:: getVectorSize(){
+    return dataArray.size();
+}
+
+
+//creates vector without any data
+SparseVector::SparseVector(){}
+
+SparseVector::SparseVector(string& inputFilePath){
+    ifstream inpF;
+    string input;
+    inpF.open(inputFilePath);
+    if(inpF.is_open()){
+        if(check_file_errors(&inpF)){
+            if(getline(inpF,input)){
+            stringstream inputLine(input);
+            parse_input(inputLine);
+           } 
+        }
+        else
+            cout<<"Error occured while read file!!\n";
+    }     
+    inpF.close();
+
+}
+//overloaded plus operator to sum elements of vector object
+const SparseVector SparseVector:: operator +( const SparseVector& v2) const{
+    if( dataArray.size()==v2.dataArray.size()){
+        SparseVector newVec; //a vector object with 
+        newVec.dataArray.resize(dataArray.size());
+//if input vectors are in same size sum the element and store into new vector object
+        for(int i=0; i<dataArray.size(); i++)
+            newVec.dataArray[i]=dataArray[i]+v2.dataArray[i];
+//return new vector
+        return newVec;
+
+    }
+    else{
+        cout<<"Addition cannot be done on different sized vectors!!\n";
+        exit(1);
+    }    
+}
+//returns the data at given index
+double SparseVector:: operator [] (int index) const{
+    return dataArray[index];
+} 
+
+//return the vector which contains negative of input vector
+
+SparseVector SparseVector:: operator -() const {
+    SparseVector neg;
+    int vecSize=dataArray.size();
+    neg.initialize(vecSize);
+    //fill with negated elements
+    for(int i=0; i<vecSize; i++)
+        neg.dataArray[i] = 0.0-dataArray[i];
+    return neg;    
+}
+
+//substracts two equal sized vectors
+SparseVector SparseVector:: operator - (const SparseVector& v2) const {
+    if(dataArray.size()==v2.dataArray.size()){
+        SparseVector newVec; //a vector object without elements
+        //initialize to current input vector size
+        newVec.initialize(dataArray.size());
+        //substracts two vectors
+        for(int i=0; i<dataArray.size(); i++)
+            newVec.dataArray[i]=dataArray[i]-v2.dataArray[i];
+        return newVec;
+    }
+    else{
+        cout<<"Addition cannot be done on different sized vectors!!\n";
+        exit(1);
+    }
+}
+//copy the content of right side to vector at the left side
+SparseVector& SparseVector:: operator =( SparseVector& other){
+    (*this).initialize(other.getVectorSize());
+    //dataArray.resize(other.getVectorSize());
+    for(int i=0; i< other.getVectorSize();i++)
+        dataArray[i]=other.dataArray[i];
+    return *this;    
+}
+//output the content of the vector
+ostream& operator << (ostream &out, const SparseVector &vec){
+    for(int i=0;i<vec.dataArray.size();i++){
+            out<<vec.dataArray[i]<<"   ";
+    }
+    return out;
+}
+//returns the result of dor product of two equall sized vectors
+const double SparseVector:: dot( const SparseVector &v2){
+    double dotResult=0.0;
+    //if same side multipy corresponding elements
+    if(dataArray.size()==v2.dataArray.size()){
+        for(int i=0; i<dataArray.size(); i++)
+            dotResult += (dataArray[i])*(v2.dataArray[i]);
+        return dotResult;   
+    }
+    //if not same size exit
+    else{
+        cout<<"Addition cannot be done on different sized vectors!!\n";
+        exit(1);
+    }
+}
+//append the given data to vector
+void SparseVector :: push_data(double data){
+    dataArray.push_back(data);
+    return;
+}
+//a Matrix object with container sized zero
+SparseMatrix::SparseMatrix()
+{}
+
+//reads non- zero element infos from file and create the equivalent matrix consists of Sparse vector objects
+SparseMatrix::SparseMatrix(string& inputFilePath){
+    ifstream mtInpF;
+    string mtInput;
+    int row;
+    int columnSize=0,vSize;
+    vector <int> rowNum;
+    vector <SparseVector> rows;
+    mtInpF.open(inputFilePath);
+    //check if file opened correctly
+    if(mtInpF.is_open()){
+        if(check_file_errors(&mtInpF)){
+        //read while there is input 
+            while(getline(mtInpF,mtInput)){
+            stringstream Input(mtInput);
+            //store row number
+            Input>>row;
+            rowNum.push_back(row);
+            //create sparse vector to be filled with provided elements
+            SparseVector v;
+            v.parse_input(Input);
+            vSize=v.getVectorSize();
+            rows.push_back(v);
+
+            //store max column size
+            if(vSize>columnSize)
+                columnSize=vSize;
+
+            }
+            //resize the matrix
+            int matrixSize=rowNum[rowNum.size()-1]+1;
+            Matrix.resize(matrixSize);
+
+            //initialize matrix rows with zeros
+            for(int i=0;i<matrixSize; i++){
+                Matrix[i].initialize(columnSize);
+            }
+            //fill the non-zero values stored in rows vector
+            for(int i=0; i<rowNum.size(); i++){
+                Matrix[rowNum[i]]=(rows[i]);
+                int vSize=Matrix[rowNum[i]].getVectorSize();
+            }
+        }
+    }     
+    mtInpF.close();
+}
+
+//ostream operator for matrix content 
+ostream& operator << (ostream &out, const SparseMatrix &m){
+    for(int i=0;i<m.Matrix.size();i++){
+        out<<m.Matrix[i]<<endl;
+    }
+    return out;
+}
+//Assigns matrix on right side to matrix on left side
+SparseMatrix& SparseMatrix:: operator =( SparseMatrix& other){
+    int newSize=other.Matrix.size();
+    Matrix.resize(newSize);
+    for(int i=0;i<newSize;i++){
+        Matrix[i]=other.Matrix[i];
+    }
+    return *this;    
+}
+//returns SparseVector object at given index
+SparseVector SparseMatrix:: operator[](int index) {
+    return Matrix[index];
+} 
+//adds two same sized matrices
+const SparseMatrix SparseMatrix:: operator +(SparseMatrix& m2) const{
+    if(Matrix.size() != m2.Matrix.size()){
+        cout<<"Cannot add two different sized matrices!! Terminating"<<endl;
+        exit(1);
+    }    
+    SparseMatrix newM;
+//add each SparseVectorat the same index
+    for(int i=0; i<Matrix.size(); i++){
+        newM.Matrix.push_back((*this).Matrix[i] + m2.Matrix[i]); 
+    }
+    return newM;
+}
+//negates the elements of the matrix
+const SparseMatrix SparseMatrix:: operator -() const {
+    SparseMatrix neg;
+    int vecSize=Matrix.size();
+    for(int i=0; i<vecSize; i++)
+        neg.Matrix.push_back(-Matrix[i]);
+    return neg;    
+}
+//substracts 2 same sized matrix elements
+const SparseMatrix SparseMatrix:: operator - ( SparseMatrix& m2) const {
+    if(Matrix.size() != m2.Matrix.size()){
+        cout<<"Cannot substract two different sized matrices!! Terminating"<<endl;
+        exit(1);
+    }    
+    SparseMatrix newM;
+    for(int i=0; i<Matrix.size(); i++){
+        newM.Matrix.push_back(Matrix[i]- m2.Matrix[i]); 
+    } 
+    return newM;
+}
+
+ //returns a resulting matrix from 2 matrix 
+const SparseMatrix SparseMatrix::operator * ( SparseMatrix& m2) {
+    if(Matrix[0].getVectorSize() == m2.Matrix.size() ){
+        SparseMatrix mult;
+        double eachEle=0;
+//counter i counts rows of matrix 1
+        for(int i=0; i < Matrix.size(); i++){
+            //create new SparseVector to store multiplication result for each new row 
+            SparseVector resVec;
+            // counter j counts the columns of second matrix
+            for(int j=0; j < m2[0].getVectorSize(); j++){
+                //counter k matches elements from row of first atrix and column of second matrix
+                for(int k=0; k < m2.Matrix.size(); k++)
+                    eachEle += Matrix[i][k] * m2.Matrix[k][j];
+
+                //store each element of row vector
+                resVec.push_data(eachEle);
+                eachEle=0;
+            }
+            //store row vector into matrix container
+            mult.Matrix.push_back(resVec);           
+
+        }
+    return mult;
+    }
+
+     else{
+        cout<<"Cannot multiply incompatible Matrices!!\n";
+        exit(1);
+    }
+
+}
+//returns the transpose matrix of SparseMatrix
+SparseMatrix SparseMatrix:: transpose(){
+    SparseMatrix result;
+    int mSize=Matrix[0].getVectorSize();
+    for(int i=0; i<mSize; i++){
+        SparseVector v;
+        for(int j=0;j<Matrix.size();j++){
+            v.push_data( Matrix[j][i]);
+        }
+        result.Matrix.push_back(v);        
+    }
+    return result;
+}
