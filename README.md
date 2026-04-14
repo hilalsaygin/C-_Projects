@@ -1,6 +1,6 @@
 # C & C++ Projects Collection
 
-A repository showcasing various low-level programming, systems engineering, and algorithmic projects implemented in C and C++. These projects cover topics ranging from file systems and concurrency to mathematical optimizations and game logic.
+Containg low-level programming, systems engineering, and algorithmic projects implemented in C and C++. These projects cover topics ranging from file systems and concurrency to mathematical optimizations and game logic.
 
 ## 🚀 Projects Overview
 
